@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ELF 解剖台：在浏览器里逐字节查看 ELF 文件，颜色标注每个字节的结构含义。">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1420'/%3E%3Cpath d='M9 7h10l5 5v13H9V7Z' fill='none' stroke='%237dd3fc' stroke-width='1.6'/%3E%3Cpath d='m13 17-2 2 2 2M18 17l2 2-2 2' fill='none' stroke='%23a78bfa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>ELF 解剖台 · 字节级可视化</title>
+  <link rel="stylesheet" href="css/style.css?v=20261107k">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none">
+            <path d="M6 4h14l6 6v18H6V4Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M20 4v6h6" stroke="currentColor" stroke-width="1.6"/>
+            <path d="m11 17-2 2 2 2M16 17l2 2-2 2M14.6 23l2.8-10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>ELF 解剖台</h1>
+          <span>BYTE-LEVEL ELF AUTOPSY</span>
+        </div>
+      </div>
+
+      <div class="file-status" id="fileStatus">
+        <div class="file-name" id="fileName">未打开文件</div>
+        <div class="chips" id="chips">
+          <span class="chip muted">等待载入 ELF…</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn ghost" id="demoBtn" title="载入内置示例">
+          <span class="btn-ico">◇</span> 载入示例
+        </button>
+        <button class="btn primary" id="openBtn" title="打开本地 ELF 文件 (Ctrl+O)">
+          <span class="btn-ico">⌘</span> 打开 ELF
+        </button>
+        <input type="file" id="fileInput" hidden>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="empty" id="empty">
+        <div class="empty-inner">
+          <div class="hero-copy">
+            <div class="eyebrow"><span class="pulse"></span> ELF · AUTOPSY</div>
+            <h2>看懂 ELF 的<br><em>每一个字节</em></h2>
+            <p class="lede">
+              把可执行文件摊开在解剖台上：十六进制视图、结构体字段、节与段的布局，
+              以及每个字节到底属于什么 —— 全部在浏览器本地完成。
+            </p>
+
+            <div class="dropzone" id="dropHero">
+              <div class="drop-icon">↓</div>
+              <div>
+                <strong>拖入 ELF 文件</strong>
+                <span>或点击下方按钮选择 · 支持 ELF32 / ELF64 · 大小端</span>
+              </div>
+              <button class="btn primary" id="heroOpenBtn" type="button">选择文件</button>
+            </div>
+
+            <div class="hero-meta">
+              <span><b>0</b> 上传 · 纯本地解析</span>
+              <span><b>100%</b> 字节级覆盖</span>
+              <span><b>∞</b> 可滚动十六进制视图</span>
+            </div>
+          </div>
+
+          <div class="hero-visual" aria-hidden="true">
+            <div class="hv-card">
+              <div class="hv-head">
+                <span class="hv-dot red"></span><span class="hv-dot amber"></span><span class="hv-dot green"></span>
+                <span class="hv-file">demo.elf</span>
+                <span class="hv-offset">0x00000000</span>
+              </div>
+              <div class="hv-body">
+                <div class="hv-row">
+                  <span class="hv-off">00000000</span>
+                  <span class="hv-bytes">
+                    <b style="--c:#e879f9">7F</b><b style="--c:#e879f9">45</b><b style="--c:#e879f9">4C</b><b style="--c:#e879f9">46</b><b style="--c:#f472b6">02</b><b style="--c:#f472b6">01</b><b style="--c:#f472b6">01</b><b style="--c:#f472b6">00</b><b style="--c:#f472b6">00</b><b style="--c:#475569">00</b><b style="--c:#475569">00</b><b style="--c:#475569">00</b><b style="--c:#475569">00</b><b style="--c:#475569">00</b><b style="--c:#475569">00</b><b style="--c:#475569">00</b>
+                  </span>
+                  <span class="hv-ascii">.ELF....<i>........</i></span>
+                </div>
+                <div class="hv-ruler">
+                  <span style="flex:4;--c:#e879f9">EI_MAG0-3</span>
+                  <span style="flex:1;--c:#f472b6">CLASS</span>
+                  <span style="flex:1;--c:#f472b6">DATA</span>
+                  <span style="flex:1;--c:#f472b6">VER</span>
+                  <span style="flex:1;--c:#f472b6">OSABI</span>
+                  <span style="flex:1;--c:#f472b6">ABI</span>
+                  <span style="flex:7;--c:#475569">EI_PAD</span>
+                </div>
+                <div class="hv-callout">
+                  <div class="hv-callout-k">EI_CLASS</div>
+                  <div class="hv-callout-v">0x02 → ELF64</div>
+                  <div class="hv-callout-d">文件类别：1 = 32 位，2 = 64 位</div>
+                </div>
+                <div class="hv-fields">
+                  <div><span>e_type</span><b>ET_DYN</b></div>
+                  <div><span>e_machine</span><b>EM_X86_64</b></div>
+                  <div><span>e_entry</span><b>0x401000</b></div>
+                </div>
+              </div>
+              <div class="hv-foot">
+                <span><i class="sw" style="--c:#a78bfa"></i> ELF 头</span>
+                <span><i class="sw" style="--c:#4ade80"></i> 代码</span>
+                <span><i class="sw" style="--c:#38bdf8"></i> 字符串</span>
+                <span><i class="sw" style="--c:#c084fc"></i> 重定位</span>
+                <span class="hv-live">LOCAL ONLY</span>
+              </div>
+            </div>
+            <div class="hv-glow"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="workspace" id="workspace" hidden>
+        <aside class="left">
+          <section class="card" id="overviewCard">
+            <div class="card-head">
+              <h3>文件概览</h3>
+              <span class="card-badge" id="fileBadge">ELF</span>
+            </div>
+            <div id="overview" class="overview"></div>
+          </section>
+
+          <section class="card sections-card">
+            <div class="card-head">
+              <h3>节 Sections</h3>
+              <span class="card-badge" id="sectionCount">0</span>
+            </div>
+            <div class="mini-search-wrap">
+              <input class="mini-search" id="sectionSearch" placeholder="过滤节名…" autocomplete="off">
+            </div>
+            <div class="section-list" id="sectionList"></div>
+          </section>
+
+          <section class="card legend-card">
+            <div class="card-head">
+              <h3>字节图例</h3>
+              <button class="link-btn" id="clearFilter" hidden>清除筛选</button>
+            </div>
+            <p class="card-help" id="legendHelp">按类别给每个字节上色。点击图例可高亮该类字节。</p>
+            <div class="legend" id="legend"></div>
+          </section>
+        </aside>
+
+        <section class="center">
+          <div class="map-card">
+            <div class="map-head">
+              <span class="map-title">文件布局 <em id="mapHint">布局色 · 点击跳转</em></span>
+              <span class="map-info" id="mapInfo">—</span>
+            </div>
+            <div class="filemap" id="filemap"></div>
+            <div class="map-scale"><span>0x0</span><span id="mapScaleEnd">—</span></div>
+          </div>
+
+          <div class="hex-card" id="hexCard">
+            <div class="hex-toolbar">
+              <div class="segmented" id="modeSwitch" role="group" aria-label="着色模式">
+                <button data-mode="kind" class="on">区域</button>
+                <button data-mode="role">字段语义</button>
+              </div>
+              <div class="underlay-switch" id="underlaySwitch" role="group" aria-label="区域底纹显示方式"
+                title="区域底纹：常驻显示 / 仅显示选中 / 不显示">
+                <span class="us-title"><i class="us-dot"></i>底纹</span>
+                <button type="button" data-underlay="all" aria-pressed="false" title="所有区域常驻显示">常驻</button>
+                <button type="button" data-underlay="selected" aria-pressed="true" class="on" title="只显示当前选中字节所属区域（默认）">仅选中</button>
+                <button type="button" data-underlay="none" aria-pressed="false" title="不显示区域底纹">不显示</button>
+              </div>
+              <div class="jump">
+                <span class="jump-prefix">0x</span>
+                <input id="jumpInput" placeholder="跳转偏移，如 46b0" spellcheck="false" autocomplete="off">
+                <button class="btn tiny" id="jumpBtn">跳转</button>
+              </div>
+              <div class="hex-tip" id="hexTip">悬停看含义 · 点击锁定</div>
+            </div>
+
+            <div class="hex-body">
+              <div class="hex-main">
+                <div class="hex-head" id="hexHead">
+                  <span class="h-off">OFFSET</span>
+                  <span class="h-bytes" id="hexHeadBytes"></span>
+                  <span class="h-ascii">ASCII</span>
+                </div>
+
+                <div class="hex-scroll" id="hexScroll" tabindex="0">
+                  <div class="hex-spacer" id="hexSpacer">
+                    <div class="hex-window" id="hexWindow"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="hex-minimap-wrap" aria-label="文件布局缩略图">
+                <div class="hex-minimap-head">MAP</div>
+                <div class="hex-minimap" id="hexMinimap" title="文件布局缩略图（布局色）">
+                  <div class="hex-minimap-blocks" id="hexMinimapBlocks"></div>
+                  <div class="hex-minimap-view" id="hexMinimapView"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="statusbar">
+              <span class="status-item" id="statusOffset">偏移 —</span>
+              <span class="status-item grow" id="statusSection">—</span>
+              <span class="status-item" id="statusField">—</span>
+              <span class="status-item help">Ctrl+O 打开 · 点击字节查看解释</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="right">
+          <div class="tabs" id="tabs">
+            <button class="tab active" data-tab="inspect">字节解读</button>
+            <button class="tab" data-tab="struct">结构 <span class="tab-count" id="structCount">0</span></button>
+          </div>
+          <div class="tab-content" id="tabInspect">
+            <div class="insp-empty">
+              <div class="glyph">◈</div>
+              <h3>点击任意字节</h3>
+              <p>右侧会显示这个字节属于哪个字段、它的值代表什么，以及它所在的节与符号。</p>
+            </div>
+          </div>
+          <div class="tab-content" id="tabStruct" hidden>
+            <div class="struct-scroll" id="structScroll"></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="drop-overlay" id="dropOverlay">
+    <div class="drop-overlay-inner">
+      <div class="drop-icon">↓</div>
+      <strong>松开以解剖 ELF</strong>
+      <span>文件只会在你的浏览器中解析</span>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+  <div class="toast" id="toast"></div>
+
+  <script src="js/elf.js?v=20261107k"></script>
+  <script src="js/demo.js?v=20261107k"></script>
+  <script src="js/app.js?v=20261107k"></script>
+</body>
+</html>

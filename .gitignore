@@ -1,0 +1,17 @@
+# Local browser test profiles and captures
+.chrome-*/
+.edge-*/
+test/shots/
+*.tmp
+
+# Build artifacts and packaged releases
+dist/
+*.zip
+
+# UI smoke-test screenshots
+smoke*.png
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
